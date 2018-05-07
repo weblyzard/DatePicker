@@ -1,5 +1,5 @@
 /*!
- * DatePicker 1.0.0
+ * DatePicker 1.0.3
  *
  * A jQuery-based DatePicker that provides an easy way of creating both single
  * and multi-viewed calendars capable of accepting single, range, and multiple
@@ -20,7 +20,7 @@
  *   jquery.js
  */
 (function ($) {
-	var cache = {}, tmpl,
+  var cache = {}, tmpl,
   DatePicker = function () {
     var ids = {},
       views = {
@@ -470,8 +470,8 @@
           var tblIndex = $('table', this).index(tblEl.get(0)) - 1;
           var tmp = new Date(options.current);
           var changed = false;
-					var changedRange = false;
-					var fillIt = false;
+          var changedRange = false;
+          var fillIt = false;
           var currentCal = Math.floor(options.calendars/2);
 
           if (parentEl.is('th')) {
@@ -569,8 +569,8 @@
                       options.date[1] = val;
                     }
                     options.lastSel = !options.lastSel;
-										changedRange = !options.lastSel;
-										break;
+                    changedRange = !options.lastSel;
+                    break;
                   default:
                     options.date = tmp.valueOf();
                     break;
@@ -588,7 +588,7 @@
           if(changedRange) {
             options.onRangeChange.apply(this, prepareDate(options));
           }
-				}
+        }
         return false;
       },
 
@@ -906,8 +906,8 @@
         return this.each(function(){
           if ($(this).data('datepickerId')) {
             var cal = $('#' + $(this).data('datepickerId'));
-						var options = cal.data('datepicker');
-						options.lastSel = false;
+            var options = cal.data('datepicker');
+            options.lastSel = false;
             options.date = normalizeDate(options.mode, date);
 
             if (shiftTo) {
@@ -949,8 +949,8 @@
               options.date = null;
             } else {
               options.date = [];
-						}
-						options.lastSel = false;
+            }
+            options.lastSel = false;
             fill(cal.get(0));
           }
         });
@@ -979,7 +979,7 @@
        * @see DatePickerRedraw()
        */
       redraw: function(){
-    		return this.each(function(){
+        return this.each(function(){
           if ($(this).data('datepickerId')) {
             var cal = $('#' + $(this).data('datepickerId'));
             fill(cal.get(0));
@@ -1001,7 +1001,7 @@
     DatePickerRedraw: DatePicker.redraw
   });
 
-	tmpl = function tmpl(str, data){
+  tmpl = function tmpl(str, data){
     // Figure out if we're getting a template, or if we need to
     // load the template - and be sure to cache the result.
     var fn = !/\W/.test(str) ?
