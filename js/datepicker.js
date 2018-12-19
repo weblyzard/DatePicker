@@ -353,8 +353,8 @@ function fill(el) {
       }
       var fromUser = options.onRenderCell(el, date);
       var val = date.valueOf();
-      if(options.date && (!$.isArray(options.date) || options.date.length > 0)) {
-        if (fromUser.selected || options.date == val || $.inArray(val, options.date) > -1 || (options.mode == 'range' && val >= options.date[0] && val <= options.date[1])) {
+      if(options.date && (!Array.isArray(options.date) || options.date.length > 0)) {
+        if (fromUser.selected || options.date == val || options.date.indexOf(val) > -1 || (options.mode == 'range' && val >= options.date[0] && val <= options.date[1])) {
           data.weeks[indic].days[indic2].classname.push('datepickerSelected');
         }
       }
@@ -549,8 +549,8 @@ function click(ev) {
           switch (options.mode) {
             case 'multiple':
               val = (tmp.setHours(0,0,0,0)).valueOf();
-              if ($.inArray(val, options.date) > -1) {
-                $.each(options.date, function(nr, dat){
+              if (options.date.indexOf(val) > -1) {
+                _.forEach(options.date, function(dat, nr){
                   if (dat == val) {
                     options.date.splice(nr,1);
                     return false;
@@ -609,10 +609,10 @@ function normalizeDate(mode, date) {
   if(mode != 'single' && !date) date = [];
 
   // if we have a selected date and not a null or empty array
-  if(date && (!$.isArray(date) || date.length > 0)) {
+  if(date && (!Array.isArray(date) || date.length > 0)) {
       // Create a standardized date depending on the calendar mode
       if (mode != 'single') {
-        if (!$.isArray(date)) {
+        if (!Array.isArray(date)) {
           date = [((new Date(date)).setHours(0,0,0,0)).valueOf()];
           if (mode == 'range') {
             // create a range of one day
@@ -756,6 +756,45 @@ function prepareDate(options) {
     });
   }
   return [dates, options.el, !options.lastSel];
+};
+
+/**
+ * Internal method, returns true if el is a child of parentEl
+ */
+function isChildOf(parentEl, el, container) {
+  if(parentEl == el) {
+    return true;
+  }
+  if(parentEl.contains) {
+    return parentEl.contains(el);
+  }
+  if( parentEl.compareDocumentPosition ) {
+    return !!(parentEl.compareDocumentPosition(el) & 16);
+  }
+  var prEl = el.parentNode;
+  while(prEl && prEl != container) {
+    if(prEl == parentEl)
+      return true;
+    prEl = prEl.parentNode;
+  }
+  return false;
+};
+
+/**
+ * Hide a non-inline DatePicker calendar.
+ *
+ * Not applicable for inline DatePickers.
+ *
+ * @param ev Event object
+ */
+function hide(ev) {
+  if (ev.target != ev.data.trigger && !isChildOf(ev.data.cal.get(0), ev.target, ev.data.cal.get(0))) {
+    if (ev.data.cal.data('datepicker').onBeforeHide.apply(this, [ev.data.cal.get(0)]) != false) {
+      ev.data.cal.hide();
+      ev.data.cal.data('datepicker').onAfterHide.apply(this, [ev.data.cal.get(0)]);
+      $(document).unbind('mousedown', hide);  // remove the global listener
+    }
+  }
 };
 
 export default class {
