@@ -281,9 +281,9 @@ var cache = {};
  *
  * @param HTMLDivElement el datepicker container element
  */
-function fill(el) {
-  var options = $(el).data('datepicker');
-  var cal = $(el);
+function fill(datepicker) {
+  var options = datepicker.options;
+  var cal = options.el;
   var currentCal = Math.floor(options.calendars/2), date, data, dow, month, cnt = 0, days, indic, indic2, html, tblCal;
 
   cal.find('td>table tbody').remove();
@@ -351,10 +351,10 @@ function fill(el) {
       if (date.getDay() == 6) {
         data.weeks[indic].days[indic2].classname.push('datepickerSaturday');
       }
-      var fromUser = options.onRenderCell(el, date);
+      var fromUser = options.onRenderCell(datepicker, date);
       var val = date.valueOf();
       if(options.date && (!Array.isArray(options.date) || options.date.length > 0)) {
-        if (fromUser.selected || options.date == val || options.date.indexOf(val) > -1 || (options.mode == 'range' && val >= options.date[0] && val <= options.date[1])) {
+        if (fromUser.selected || options.date == val || Array.isArray(options.date) && (options.date.indexOf(val) > -1) || (options.mode == 'range' && val >= options.date[0] && val <= options.date[1])) {
           data.weeks[indic].days[indic2].classname.push('datepickerSelected');
         }
       }
@@ -461,21 +461,25 @@ function tmpl(str, data) {
  * Internal method, bound to the HTML DatePicker Element, onClick.
  * This is the function that controls the behavior of the calendar when
  * the title, next/previous, or a date cell is clicked on.
+ * 
+ * 'this' is binded to current datepicker
  */
 function click(ev) {
-  if ($(ev.target).is('span')) {
-    ev.target = ev.target.parentNode;
+  var target = ev.target;
+  if (ev.target.tagName.toLowerCase() === 'span') {
+    target = ev.target.parentNode;
   }
-  var el = $(ev.target);
+  var el = $(target);
   if (el.is('a')) {
-    ev.target.blur();
+    target.blur();
     if (el.hasClass('datepickerDisabled')) {
       return false;
     }
-    var options = $(this).data('datepicker');
+    var options = this.options;
     var parentEl = el.parent();
     var tblEl = parentEl.parent().parent().parent();
-    var tblIndex = $('table', this).index(tblEl.get(0)) - 1;
+    var tblIndex = options.el.find('table');
+    tblIndex = tblIndex.index(tblEl.get(0)) - 1;
     var tmp = new Date(options.current);
     var changed = false;
     var changedRange = false;
@@ -549,7 +553,7 @@ function click(ev) {
           switch (options.mode) {
             case 'multiple':
               val = (tmp.setHours(0,0,0,0)).valueOf();
-              if (options.date.indexOf(val) > -1) {
+              if (Array.isArray(options.date) && (options.date.indexOf(val) > -1)) {
                 _.forEach(options.date, function(dat, nr){
                   if (dat == val) {
                     options.date.splice(nr,1);
@@ -591,10 +595,10 @@ function click(ev) {
       fill(this);
     }
     if(changed) {
-      options.onChange.apply(this, prepareDate(options));
+      options.onChange.apply(options.el, prepareDate(options));
     }
     if(changedRange) {
-      options.onRangeChange.apply(this, prepareDate(options));
+      options.onRangeChange.apply(options.el, prepareDate(options));
     }
   }
   return false;
@@ -643,11 +647,11 @@ function normalizeDate(mode, date) {
 /**
  * Internal method which lays out the calendar widget
  */
-function layout(el) {
-  var options = $(el).data('datepicker');
+function layout(datepicker) {
+  var options = datepicker.options;
   var cal = $('#' + options.id);
   if (options.extraHeight === false) {
-    var divs = $(el).find('div');
+    var divs = options.el.find('div');
     options.extraHeight = divs.get(0).offsetHeight + divs.get(1).offsetHeight;  // heights from top/bottom borders
     options.extraWidth = divs.get(2).offsetWidth + divs.get(3).offsetWidth;     // widths from left/right borders
   }
@@ -670,19 +674,21 @@ function layout(el) {
  * of the calendar.
  *
  * Method is not applicable for inline DatePickers
+ * 
+ * 'this' binded to current DatePicker
  */
 function show(ev) {
-  var cal = $('#' +$('#' + this.elementId).data('datepickerId'));
+  var cal = $('#' + this.datepickerId);
   if (!cal.is(':visible')) {
     var calEl = cal.get(0);
-    var options = cal.data('datepicker');
+    var options = this.options;
 
     var test = options.onBeforeShow.apply(this, [calEl]);
     if(options.onBeforeShow.apply(this, [calEl]) == false) {
       return;
     }
 
-    fill(calEl);
+    fill(this);
     var pos = $('#' + this.elementId).offset();
     var viewPort = getViewport();
     var top = pos.top;
@@ -692,7 +698,7 @@ function show(ev) {
       visibility: 'hidden',
       display: 'block'
     });
-    layout(calEl);
+    layout(this);
     switch (options.position){
       case 'top':
         top -= calEl.offsetHeight;
@@ -751,7 +757,7 @@ function prepareDate(options) {
     if(options.date) dates = new Date(options.date);
   } else {
     dates = new Array();
-    $(options.date).each(function(i, val){
+    _.forEach(options.date).each(function(val, i){
       dates.push(new Date(val));
     });
   }
@@ -784,15 +790,19 @@ function isChildOf(parentEl, el, container) {
  * Hide a non-inline DatePicker calendar.
  *
  * Not applicable for inline DatePickers.
+ * 
+ * TODO: was not tested after $ elimination
+ * 'this' binded to current DatePicker
  *
  * @param ev Event object
  */
 function hide(ev) {
-  if (ev.target != ev.data.trigger && !isChildOf(ev.data.cal.get(0), ev.target, ev.data.cal.get(0))) {
-    if (ev.data.cal.data('datepicker').onBeforeHide.apply(this, [ev.data.cal.get(0)]) != false) {
-      ev.data.cal.hide();
-      ev.data.cal.data('datepicker').onAfterHide.apply(this, [ev.data.cal.get(0)]);
-      $(document).unbind('mousedown', hide);  // remove the global listener
+  var options = this.options;
+  if (ev.target != options.trigger && !isChildOf(options.el.get(0), ev.target, options.el.get(0))) {
+    if (options.onBeforeHide.apply(options.el, options.el) != false) {
+      options.el.get(0).style.display = 'none';
+      options.onAfterHide.apply(options.el, options.el);
+      document.removeEventListener('mousedown', hide)
     }
   }
 };
@@ -810,61 +820,62 @@ export default class {
    */
   constructor(elemId, options) {
     this.elementId = elemId;
-    options = $.extend({}, defaults, options||{});
+    options = _.extend({}, defaults, options||{});
     extendDate(options.locale);
     options.calendars = Math.max(1, parseInt(options.calendars,10)||1);
     options.mode = /single|multiple|range/.test(options.mode) ? options.mode : 'single';
 
-    if (!$('#' + this.elementId).data('datepicker')) {
-      options.el = $('#' + this.elementId);
+    options.el = $('#' + this.elementId);
 
-      options.date = normalizeDate(options.mode, options.date);
+    options.date = normalizeDate(options.mode, options.date);
 
-      if (!options.current) {
-        options.current = new Date();
-      } else {
-        options.current = new Date(options.current);
-      }
-      options.current.setDate(1);
-      options.current.setHours(0,0,0,0);
+    if (!options.current) {
+      options.current = new Date();
+    } else {
+      options.current = new Date(options.current);
+    }
+    options.current.setDate(1);
+    options.current.setHours(0,0,0,0);
 
-      var id = 'datepicker_' + parseInt(Math.random() * 1000), cnt;
-      options.id = id;
-      $(this.elementId).data('datepickerId', options.id);
-      var cal = $(tpl.wrapper).attr('id', id).bind('click', click).data('datepicker', options);
-      if (options.className) {
-        cal.addClass(options.className);
+    var id = 'datepicker_' + parseInt(Math.random() * 1000), cnt;
+    options.id = id;
+    this.datepickerId =  options.id;
+    this.options = options;
+    var cal = $(tpl.wrapper).attr('id', id);
+    cal.get(0).addEventListener('click', click.bind(this));
+
+    if (options.className) {
+      cal.addClass(options.className);
+    }
+    var html = '';
+    for (var i = 0; i < options.calendars; i++) {
+      cnt = options.starts;
+      if (i > 0) {
+        html += tpl.space;
       }
-      var html = '';
-      for (var i = 0; i < options.calendars; i++) {
-        cnt = options.starts;
-        if (i > 0) {
-          html += tpl.space;
-        }
-        // calendar header template
-        html += tmpl(tpl.head.join(''), {
-          prev: options.prev,
-          next: options.next,
-          day1: options.locale.daysMin[(cnt++)%7],
-          day2: options.locale.daysMin[(cnt++)%7],
-          day3: options.locale.daysMin[(cnt++)%7],
-          day4: options.locale.daysMin[(cnt++)%7],
-          day5: options.locale.daysMin[(cnt++)%7],
-          day6: options.locale.daysMin[(cnt++)%7],
-          day7: options.locale.daysMin[(cnt++)%7]
-        });
-      }
-      cal
-        .find('tr:first').append(html)
-          .find('table').addClass(views[options.view]);
-      fill(cal.get(0));
-      if (options.inline) {
-        cal.appendTo('#' + this.elementId).show().css('position', 'relative');
-        layout(cal.get(0));
-      } else {
-        cal.appendTo(document.body);
-        $('#' + this.elementId).bind(options.showOn, show);
-      }
+      // calendar header template
+      html += tmpl(tpl.head.join(''), {
+        prev: options.prev,
+        next: options.next,
+        day1: options.locale.daysMin[(cnt++)%7],
+        day2: options.locale.daysMin[(cnt++)%7],
+        day3: options.locale.daysMin[(cnt++)%7],
+        day4: options.locale.daysMin[(cnt++)%7],
+        day5: options.locale.daysMin[(cnt++)%7],
+        day6: options.locale.daysMin[(cnt++)%7],
+        day7: options.locale.daysMin[(cnt++)%7]
+      });
+    }
+    cal
+      .find('tr:first').append(html)
+        .find('table').addClass(views[options.view]);
+    fill(this);
+    if (options.inline) {
+      cal.appendTo('#' + this.elementId).show().css('position', 'relative');
+      layout(this);
+    } else {
+      cal.appendTo(document.body);
+      $('#' + this.elementId).bind(options.showOn, show.bind(this));
     }
   }
 
@@ -875,15 +886,11 @@ export default class {
    * @see DatePickerShow()
    */
   showPicker() {
-    return this.each( function() {
-      if ($(this).data('datepickerId')) {
-        var cal = $('#' + $(this).data('datepickerId'));
-        var options = cal.data('datepicker');
-        if(!options.inline) {
-          show.apply(this);
-        }
+    if (this.datepickerId) {
+      if(!this.options.inline) {
+        show.apply(this);
       }
-    });
+    }
   }
 
 
@@ -894,15 +901,11 @@ export default class {
    * @see DatePickerHide()
    */
   hidePicker() {
-    return this.each( function() {
-      if ($(this).data('datepickerId')) {
-        var cal = $('#' + $(this).data('datepickerId'));
-        var options = cal.data('datepicker');
-        if(!options.inline) {
-          $('#' + $(this).data('datepickerId')).hide();
-        }
+    if (this.datepickerId) {
+      if(!this.options.inline) {
+        $('#' + this.datepickerId).hide();
       }
-    });
+    }
   }
 
   /**
@@ -922,16 +925,15 @@ export default class {
    * @see DatePickerSetDate()
    */
   setDate(date, shiftTo) {
-    if ($('#' + this.elementId).data('datepickerId')) {
-      var cal = $('#' + $('#' + this.elementId).data('datepickerId'));
-      var options = cal.data('datepicker');
+    if (this.datepickerId) {
+      var options = this.options;
       options.lastSel = false;
       options.date = normalizeDate(options.mode, date);
 
       if (shiftTo) {
         options.current = new Date(options.mode != 'single' ? options.date[0] : options.date);
       }
-      fill(cal.get(0));
+      fill(this);
     }
   }
 
@@ -948,7 +950,7 @@ export default class {
    */
   getDate() {
     if ($('#' + this.elementId).length > 0) {
-      return prepareDate($('#' + $('#' + this.elementId).data('datepickerId')).data('datepicker'));
+      return prepareDate(this.options);
     }
   }
 
@@ -958,16 +960,15 @@ export default class {
    * @see DatePickerClear()
    */
   clear(){
-    if ($('#' + this.elementId).data('datepickerId')) {
-      var cal = $('#' + $('#' + this.elementId).data('datepickerId'));
-      var options = cal.data('datepicker');
+    if ($('#' + this.datepickerId)) {
+      var options = this.options;
       if (options.mode == 'single') {
         options.date = null;
       } else {
         options.date = [];
       }
       options.lastSel = false;
-      fill(cal.get(0));
+      fill(this);
     }
   }
 
@@ -977,11 +978,9 @@ export default class {
    * @see DatePickerLayout()
    */
   fixLayout() {
-    if ($('#' + this.elementId).data('datepickerId')) {
-      var cal = $('#' + $('#' + this.elementId).data('datepickerId'));
-      var options = cal.data('datepicker');
-      if(options.inline) {
-        layout(cal.get(0));
+    if (this.datepickerId) {
+      if(this.options.inline) {
+        layout(this);
       }
     }
   }
@@ -992,9 +991,8 @@ export default class {
    * @see DatePickerRedraw()
    */
   redraw() {
-    if ($('#' + this.elementId).data('datepickerId')) {
-      var cal = $('#' + $('#' + this.elementId).data('datepickerId'));
-      fill(cal.get(0));
+    if (this.datepickerId) {
+      fill(this);
     }
   }
 }
