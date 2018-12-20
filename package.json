@@ -1,0 +1,26 @@
+{
+  "name": "DatePicker",
+  "version": "1.0.0",
+  "description": "Yet another date picker!  This date picker provides an easy way of creating both single and multi-viewed calendars capable of accepting single, range, and multiple selected dates.  Easy to style, with two example styles provided: an attractive 'dark' style, and a Google Analytics-like 'clean' style.",
+  "main": "index.js",
+  "dependencies": {
+    "lodash-amd": "^3.10"
+  },
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/weblyzard/DatePicker.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/weblyzard/DatePicker/issues"
+  },
+  "homepage": "https://github.com/weblyzard/DatePicker#readme"
+}

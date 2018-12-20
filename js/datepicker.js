@@ -15,10 +15,11 @@
  * Dual licensed under the MIT and GPL Version 2 licenses.
  *
  * Based on Work by Original Author: Stefan Petre www.eyecon.ro
+ * 
+ * Notice: only functionality, that used in Portal was tested after $ elimination
  *
  */
 import _ from 'lodash';
-import $ from 'jquery';
 
 const defaults = {
   /**
@@ -163,7 +164,7 @@ const defaults = {
 };
 
 const tpl = {
-  wrapper: '<div class="datepicker"><div class="datepickerBorderT" /><div class="datepickerBorderB" /><div class="datepickerBorderL" /><div class="datepickerBorderR" /><div class="datepickerBorderTL" /><div class="datepickerBorderTR" /><div class="datepickerBorderBL" /><div class="datepickerBorderBR" /><div class="datepickerContainer"><table cellspacing="0" cellpadding="0"><tbody><tr></tr></tbody></table></div></div>',
+  wrapper: '<div class="datepickerBorderT"></div><div class="datepickerBorderB"></div><div class="datepickerBorderL"></div><div class="datepickerBorderR"></div><div class="datepickerBorderTL"></div><div class="datepickerBorderTR"></div><div class="datepickerBorderBL"></div><div class="datepickerBorderBR"></div><div class="datepickerContainer"><table cellspacing="0" cellpadding="0"><tbody><tr></tr></tbody></table></div>',
   head: [
     '<td class="datepickerBlock">',
     '<table cellspacing="0" cellpadding="0">',
@@ -283,26 +284,31 @@ var cache = {};
  */
 function fill(datepicker) {
   var options = datepicker.options;
-  var cal = options.el;
+  var cal = document.getElementById(options.el);
   var currentCal = Math.floor(options.calendars/2), date, data, dow, month, cnt = 0, days, indic, indic2, html, tblCal;
-
-  cal.find('td>table tbody').remove();
+  
+  var tbodys = cal.querySelectorAll('.datepickerBlock tbody');
+  tbodys && tbodys.forEach(function(el){
+    el.parentNode.removeChild(el);
+  });
   for(var i = 0; i < options.calendars; i++) {
     date = new Date(options.current);
     date.addMonths(-currentCal + i);
-    tblCal = cal.find('table').eq(i+1);
+    tblCal = cal.querySelectorAll('table')[i+1];
 
-    if(i == 0) tblCal.addClass('datepickerFirstView');
-    if(i == options.calendars - 1) tblCal.addClass('datepickerLastView');
+    if(i == 0) tblCal && tblCal.classList.add('datepickerFirstView');
+    if(i == options.calendars - 1) tblCal && tblCal.classList.add('datepickerLastView');
 
-    if(tblCal.hasClass('datepickerViewDays')) {
+    if(tblCal && tblCal.classList.contains('datepickerViewDays')) {
       dow = date.getMonthName(true)+" "+date.getFullYear();
-    } else if(tblCal.hasClass('datepickerViewMonths')) {
+    } else if(tblCal && tblCal.classList.contains('datepickerViewMonths')) {
       dow = date.getFullYear();
-    } else if(tblCal.hasClass('datepickerViewYears')) {
+    } else if(tblCal && tblCal.classList.contains('datepickerViewYears')) {
       dow = (date.getFullYear()-6) + ' - ' + (date.getFullYear()+5);
     }
-    tblCal.find('thead tr:first th a:eq(1) span').text(dow);
+    var tr_elem;
+    if(tblCal) tr_elem = tblCal.querySelector('thead tr');
+    if(tr_elem) tr_elem.querySelectorAll('th a')[1].querySelector('span').textContent = dow;
     dow = date.getFullYear()-6;
     data = {
       data: [],
@@ -377,7 +383,7 @@ function fill(datepicker) {
     };
     // datepickerMonths template
     html = tmpl(tpl.months.join(''), data) + html;
-    tblCal.append(html);
+    tblCal && tblCal.insertAdjacentHTML('beforeend', html);
   }
 }
 
@@ -469,27 +475,26 @@ function click(ev) {
   if (ev.target.tagName.toLowerCase() === 'span') {
     target = ev.target.parentNode;
   }
-  var el = $(target);
-  if (el.is('a')) {
+  if (target.tagName.toLowerCase() === 'a') {
     target.blur();
-    if (el.hasClass('datepickerDisabled')) {
+    if (target && target.classList.contains('datepickerDisabled')) {
       return false;
     }
     var options = this.options;
-    var parentEl = el.parent();
-    var tblEl = parentEl.parent().parent().parent();
-    var tblIndex = options.el.find('table');
-    tblIndex = tblIndex.index(tblEl.get(0)) - 1;
+    var parentEl = target.parentNode;
+    var tblEl = parentEl.parentNode.parentNode.parentNode;
+    var tbl_nodes = Array.prototype.slice.call(document.getElementById(options.el).querySelectorAll('table'));
+    var tblIndex = tbl_nodes.indexOf(tblEl) - 1;
     var tmp = new Date(options.current);
     var changed = false;
     var changedRange = false;
     var fillIt = false;
     var currentCal = Math.floor(options.calendars/2);
 
-    if (parentEl.is('th')) {
+    if (parentEl.tagName.toLowerCase() === 'th') {
       // clicking the calendar title
 
-      if (el.hasClass('datepickerMonth')) {
+      if (target.classList.contains('datepickerMonth')) {
         // clicking on the title of a Month Datepicker
         tmp.addMonths(tblIndex - currentCal);
 
@@ -506,47 +511,53 @@ function click(ev) {
           // single/multiple mode with a single calendar: swap between daily/monthly/yearly view.
           // Note:  there's no reason a multi-calendar widget can't have this functionality,
           //   however I think it looks really unintuitive.
-          if(tblEl.eq(0).hasClass('datepickerViewDays')) {
-            tblEl.eq(0).toggleClass('datepickerViewDays datepickerViewMonths');
-            el.find('span').text(tmp.getFullYear());
-          } else if(tblEl.eq(0).hasClass('datepickerViewMonths')) {
-            tblEl.eq(0).toggleClass('datepickerViewMonths datepickerViewYears');
-            el.find('span').text((tmp.getFullYear()-6) + ' - ' + (tmp.getFullYear()+5));
-          } else if(tblEl.eq(0).hasClass('datepickerViewYears')) {
-            tblEl.eq(0).toggleClass('datepickerViewYears datepickerViewDays');
-            el.find('span').text(tmp.getMonthName(true)+" "+tmp.getFullYear());
+          if(tblEl.classList.contains('datepickerViewDays')) {
+            tblEl.classList.toggle('datepickerViewDays');
+            tblEl.classList.toggle('datepickerViewMonths');
+            target.querySelector('span').innerHTML = tmp.getFullYear();
+          } else if(tblEl.classList.contains('datepickerViewMonths')) {
+            tblEl.classList.toggle('datepickerViewMonths');
+            tblEl.classList.toggle('datepickerViewYears');
+            target.querySelector('span').innerHTML(tmp.getFullYear()-6) + ' - ' + (tmp.getFullYear()+5);
+          } else if(tblEl.classList.contains('datepickerViewYears')) {
+            tblEl.classList.toggle('datepickerViewYears');
+            tblEl.classList.toggle('datepickerViewDays');
+            target.querySelector('span').innerHTML(tmp.getMonthName(true)+" "+tmp.getFullYear());
           }
         }
-      } else if (parentEl.parent().parent().is('thead')) {
+      } else if (parentEl.parentNode.parentNode.tagName.toLowerCase() === 'thead') {
         // clicked either next/previous arrows
-        if(tblEl.eq(0).hasClass('datepickerViewDays')) {
-          options.current.addMonths(el.hasClass('datepickerGoPrev') ? -1 : 1);
-        } else if(tblEl.eq(0).hasClass('datepickerViewMonths')) {
-          options.current.addYears(el.hasClass('datepickerGoPrev') ? -1 : 1);
-        } else if(tblEl.eq(0).hasClass('datepickerViewYears')) {
-          options.current.addYears(el.hasClass('datepickerGoPrev') ? -12 : 12);
+        if(tblEl.classList.contains('datepickerViewDays')) {
+          options.current.addMonths(target.classList.contains('datepickerGoPrev') ? -1 : 1);
+        } else if(tblEl.classList.contains('datepickerViewMonths')) {
+          options.current.addYears(target.classList.contains('datepickerGoPrev') ? -1 : 1);
+        } else if(tblEl.classList.contains('datepickerViewYears')) {
+          options.current.addYears(target.classList.contains('datepickerGoPrev') ? -12 : 12);
         }
         fillIt = true;
       }
 
-    } else if (parentEl.is('td') && !parentEl.hasClass('datepickerDisabled')) {
+    } else if (parentEl.tagName.toLowerCase() === 'td' && !parentEl.classList.contains('datepickerDisabled')) {
       // clicking the calendar grid
 
-      if(tblEl.eq(0).hasClass('datepickerViewMonths')) {
+      if(tblEl.classList.contains('datepickerViewMonths')) {
         // clicked a month cell
-        options.current.setMonth(tblEl.find('tbody.datepickerMonths td').index(parentEl));
-        options.current.setFullYear(parseInt(tblEl.find('thead th a.datepickerMonth span').text(), 10));
+        var nodes = Array.prototype.slice.call(tblEl.querySelectorAll('tbody.datepickerMonths td'));
+        options.current.setMonth(nodes.indexOf(parentEl));
+        options.current.setFullYear(parseInt(tblEl.querySelector('thead th a.datepickerMonth span').innerHTML, 10));
         options.current.addMonths(currentCal - tblIndex);
-        tblEl.eq(0).toggleClass('datepickerViewMonths datepickerViewDays');
-      } else if(tblEl.eq(0).hasClass('datepickerViewYears')) {
+        tblEl.classList.toggle('datepickerViewMonths');
+        tblEl.classList.toggle('datepickerViewDays');
+      } else if(tblEl.classList.contains('datepickerViewYears')) {
         // clicked a year cell
-        options.current.setFullYear(parseInt(el.text(), 10));
-        tblEl.eq(0).toggleClass('datepickerViewYears datepickerViewMonths');
+        options.current.setFullYear(parseInt(target.textContent, 10));
+        tblEl.classList.toggle('datepickerViewYears');
+        tblEl.classList.toggle('datepickerViewMonths');
       } else {
         // clicked a day cell
-          var val = parseInt(el.text(), 10);
+          var val = parseInt(target.textContent, 10);
           tmp.addMonths(tblIndex - currentCal);
-          if (parentEl.hasClass('datepickerNotInMonth')) {
+          if (parentEl.classList.contains('datepickerNotInMonth')) {
             tmp.addMonths(val > 15 ? -1 : 1);
           }
           tmp.setDate(val);
@@ -649,22 +660,35 @@ function normalizeDate(mode, date) {
  */
 function layout(datepicker) {
   var options = datepicker.options;
-  var cal = $('#' + options.id);
+  var cal = document.getElementById(options.id);
   if (options.extraHeight === false) {
-    var divs = options.el.find('div');
-    options.extraHeight = divs.get(0).offsetHeight + divs.get(1).offsetHeight;  // heights from top/bottom borders
-    options.extraWidth = divs.get(2).offsetWidth + divs.get(3).offsetWidth;     // widths from left/right borders
+    var divs = document.getElementById(options.el).querySelectorAll('div');
+    if(divs.length >= 4){
+      options.extraHeight = divs[0].offsetHeight + divs[1].offsetHeight;  // heights from top/bottom borders
+      options.extraWidth = divs[2].offsetWidth + divs[3].offsetWidth;     // widths from left/right borders
+    }
   }
-  var tbl = cal.find('table:first').get(0);
+  var tbl = cal.querySelector('table');
   var width = tbl.offsetWidth;
   var height = tbl.offsetHeight;
-  cal.css({
-    width: width + options.extraWidth + 'px',
-    height: height + options.extraHeight + 'px'
-  }).find('div.datepickerContainer').css({
-    width: width + 'px',
-    height: height + 'px'
-  });
+  cal.style.width = width + options.extraWidth + 'px';
+  cal.style.height = height + options.extraHeight + 'px';
+  var datepickerCont = cal.querySelector('.datepickerContainer');
+  datepickerCont.style.width =  width + 'px';
+  datepickerCont.style.height =  height + 'px';
+};
+
+/**
+ * Internal method, returns an object containing the viewport dimensions
+ */
+function getViewport() {
+  var m = document.compatMode == 'CSS1Compat';
+  return {
+    l : window.pageXOffset || (m ? document.documentElement.scrollLeft : document.body.scrollLeft),
+    t : window.pageYOffset || (m ? document.documentElement.scrollTop : document.body.scrollTop),
+    w : window.innerWidth || (m ? document.documentElement.clientWidth : document.body.clientWidth),
+    h : window.innerHeight || (m ? document.documentElement.clientHeight : document.body.clientHeight)
+  };
 };
 
 /**
@@ -674,30 +698,30 @@ function layout(datepicker) {
  * of the calendar.
  *
  * Method is not applicable for inline DatePickers
+ * TODO: was not tested after $ elimination
  * 
  * 'this' binded to current DatePicker
  */
 function show(ev) {
-  var cal = $('#' + this.datepickerId);
-  if (!cal.is(':visible')) {
-    var calEl = cal.get(0);
+  var calEl = document.getElementById(this.datepickerId);
+  if (calEl && !(calEl.offsetWidth > 0 && calEl.offsetHeight > 0)) {
     var options = this.options;
 
-    var test = options.onBeforeShow.apply(this, [calEl]);
     if(options.onBeforeShow.apply(this, [calEl]) == false) {
       return;
     }
 
     fill(this);
-    var pos = $('#' + this.elementId).offset();
+    var br = document.getElementById(this.elementId).getBoundingClientRect();
+    var pos = {
+      top: br.top,
+      left: br.left,
+    }
     var viewPort = getViewport();
     var top = pos.top;
     var left = pos.left;
-    var oldDisplay = $.curCSS(calEl, 'display');
-    cal.css({
-      visibility: 'hidden',
-      display: 'block'
-    });
+    calEl.style.visibility = 'hidden';
+    calEl.style.display = 'block';
     layout(this);
     switch (options.position){
       case 'top':
@@ -732,7 +756,7 @@ function show(ev) {
       left: left + 'px'
     });
     options.onAfterShow.apply(this, [cal.get(0)]);
-    $(document).bind('mousedown', {cal: cal, trigger: this}, hide);  // global listener so clicking outside the calendar will close it
+    document.addEventListener('mousedown', hide.bind(this));  // global listener so clicking outside the calendar will close it
   }
   return false;
 };
@@ -761,7 +785,7 @@ function prepareDate(options) {
       dates.push(new Date(val));
     });
   }
-  return [dates, options.el, !options.lastSel];
+  return [dates, document.getElementById(options.el), !options.lastSel];
 };
 
 /**
@@ -798,10 +822,10 @@ function isChildOf(parentEl, el, container) {
  */
 function hide(ev) {
   var options = this.options;
-  if (ev.target != options.trigger && !isChildOf(options.el.get(0), ev.target, options.el.get(0))) {
-    if (options.onBeforeHide.apply(options.el, options.el) != false) {
-      options.el.get(0).style.display = 'none';
-      options.onAfterHide.apply(options.el, options.el);
+  if (ev.target != this && !isChildOf(document.getElementById(options.el), ev.target, document.getElementById(options.el))) {
+    if (options.onBeforeHide.apply(document.getElementById(options.el), document.getElementById(options.el)) != false) {
+      options.el.style.display = 'none';
+      options.onAfterHide.apply(document.getElementById(options.el), document.getElementById(options.el));
       document.removeEventListener('mousedown', hide)
     }
   }
@@ -825,7 +849,7 @@ export default class {
     options.calendars = Math.max(1, parseInt(options.calendars,10)||1);
     options.mode = /single|multiple|range/.test(options.mode) ? options.mode : 'single';
 
-    options.el = $('#' + this.elementId);
+    options.el = this.elementId;
 
     options.date = normalizeDate(options.mode, options.date);
 
@@ -841,11 +865,17 @@ export default class {
     options.id = id;
     this.datepickerId =  options.id;
     this.options = options;
-    var cal = $(tpl.wrapper).attr('id', id);
-    cal.get(0).addEventListener('click', click.bind(this));
-
+    var cal = document.createElement('div');
+    cal.className = 'datepicker';
+    cal.id = id;
+    cal.insertAdjacentHTML('beforeend', tpl.wrapper);
+    cal.addEventListener('click', click.bind(this));
+    
     if (options.className) {
-      cal.addClass(options.className);
+      if (cal.classList)
+        cal.classList.add(options.className);
+      else
+        cal.className += ' ' + options.className;
     }
     var html = '';
     for (var i = 0; i < options.calendars; i++) {
@@ -866,16 +896,22 @@ export default class {
         day7: options.locale.daysMin[(cnt++)%7]
       });
     }
-    cal
-      .find('tr:first').append(html)
-        .find('table').addClass(views[options.view]);
+
+    cal.querySelector('tr').insertAdjacentHTML('beforeend', html);
+    var tbl = cal.querySelector('tr table');
+    if (tbl.classList)
+      tbl.classList.add(views[options.view]);
+    else
+      tbl.className += ' ' + views[options.view];
     fill(this);
     if (options.inline) {
-      cal.appendTo('#' + this.elementId).show().css('position', 'relative');
+      document.getElementById(this.elementId).appendChild(cal);
+      cal.style.display = 'block';
+      cal.style.position = 'relative';
       layout(this);
     } else {
-      cal.appendTo(document.body);
-      $('#' + this.elementId).bind(options.showOn, show.bind(this));
+      document.body.appendChild(cal);
+      document.getElementById(this.elementId).addEventListener(options.showOn, show.bind(this));
     }
   }
 
@@ -903,7 +939,8 @@ export default class {
   hidePicker() {
     if (this.datepickerId) {
       if(!this.options.inline) {
-        $('#' + this.datepickerId).hide();
+        document.getElementById(this.datepickerId) && 
+          (document.getElementById(this.datepickerId).style.display = 'none');
       }
     }
   }
@@ -949,7 +986,7 @@ export default class {
    * @see DatePickerGetDate()
    */
   getDate() {
-    if ($('#' + this.elementId).length > 0) {
+    if (document.getElementById(this.elementId).length > 0) {
       return prepareDate(this.options);
     }
   }
@@ -957,10 +994,12 @@ export default class {
   /**
    * Clears the currently selected date(s)
    *
+   * TODO: was not tested after jquery elimination
+   * 
    * @see DatePickerClear()
    */
   clear(){
-    if ($('#' + this.datepickerId)) {
+    if (document.getElementById(this.datepickerId)) {
       var options = this.options;
       if (options.mode == 'single') {
         options.date = null;
