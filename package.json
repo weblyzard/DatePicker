@@ -1,6 +1,6 @@
 {
   "name": "DatePicker",
-  "version": "1.1.0-wlt-20190313a",
+  "version": "1.0.0-wlt-20190313a",
   "description": "Yet another date picker!  This date picker provides an easy way of creating both single and multi-viewed calendars capable of accepting single, range, and multiple selected dates.  Easy to style, with two example styles provided: an attractive 'dark' style, and a Google Analytics-like 'clean' style.",
   "main": "index.js",
   "dependencies": {
